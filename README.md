@@ -43,9 +43,9 @@ Slapp/
 │   │   ├── query_main_memory.py         # AI recommendation engine
 │   │   ├── components/
 │   │   │   └── product_card.py          # Product display components
-│   │   └── utils/
-│   │       └── data_loader.py           # CSV data loading utilities
-│   └── requirements.txt                 # App-specific dependencies
+│       └── utils/
+│         └── data_loader.py           # CSV data loading utilities
+│   
 ├── utils/
 │   ├── preprocess.py                    # Unify brand-specific CSV files
 │   └── download_images.py               # Download images helper

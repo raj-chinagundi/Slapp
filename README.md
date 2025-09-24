@@ -97,9 +97,6 @@ python scripts/ingestion/supermemory_batch_push.py
 - Install app deps and launch:
 
 ```
-cd streamlit-product-display
-pip install -r requirements.txt
-cd src
 streamlit run app.py
 ```
 
@@ -113,7 +110,7 @@ streamlit run app.py
 
 2. **Configure API key**
 
-- Streamlit app (preferred): create `streamlit-product-display/.streamlit/secrets.toml` with:
+- Streamlit app (preferred): create `.streamlit/secrets.toml` with:
 
 ```
 SUPERMEMORY_API_KEY = "your_supermemory_api_key_here"
@@ -124,11 +121,6 @@ SUPERMEMORY_API_KEY = "your_supermemory_api_key_here"
 ```
 SUPERMEMORY_API_KEY=your_supermemory_api_key_here
 ```
-
-Notes:
-- The shared client now reads the key from the environment only.
-- The Streamlit app automatically exports `SUPERMEMORY_API_KEY` from `st.secrets` into the environment on startup.
-- Scripts optionally load `Slapp/.env` if present; otherwise they use your shell env.
 
 3. **Run the app (from project app root)**
    ```bash

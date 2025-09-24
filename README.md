@@ -18,6 +18,10 @@ A **Tinder-like fashion discovery app** that learns your style preferences throu
 - **Data**: 6,000+ products with AI-generated clothing descriptions (LLaVA Vision Model)
 - **Brands**: Alo Yoga, Gymshark, NAKD, Princess Polly, Vuori, and more
 
+## Architecture
+
+![Architecture Overview](./arch_snapp.png)
+
 ## Project Structure
 
 ```

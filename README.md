@@ -21,30 +21,82 @@ A **Tinder-like fashion discovery app** that learns your style preferences throu
 ## Project Structure
 
 ```
-devhacks/
+Slapp/
+├── src/                                 # Reusable libraries/modules
+│   └── supermemory/
+│       ├── __init__.py
+│       └── client.py                    # Shared SuperMemory client (env-driven)
+├── scripts/
+│   └── ingestion/
+│       ├── supermemory_batch_push.py    # Bulk upload products to SuperMemory
+│       ├── supermemory_push_async.py    # Async single upload example
+│       ├── supermemory_helper.py        # Simple single upload example
+│       └── supermemory_search.py        # Search testing helper
+├── pipelines/
+│   └── vision/
+│       └── ViT_Img_Descriptor.py        # Vision descriptor pipeline
 ├── streamlit-product-display/           # Main Streamlit application
 │   ├── src/
-│   │   ├── app.py                      # Core app with swiping logic & UI
-│   │   ├── user_memory.py              # Save preferences to SuperMemory
-│   │   ├── get_user_preference.py      # Retrieve user preferences
-│   │   ├── query_main_memory.py        # AI recommendation engine
+│   │   ├── app.py                       # Core app with swiping logic & UI
+│   │   ├── user_memory.py               # Save preferences to SuperMemory
+│   │   ├── get_user_preference.py       # Retrieve user preferences
+│   │   ├── query_main_memory.py         # AI recommendation engine
 │   │   ├── components/
-│   │   │   └── product_card.py         # Product display components
+│   │   │   └── product_card.py          # Product display components
 │   │   └── utils/
-│   │       └── data_loader.py          # CSV data loading utilities
-│   ├── requirements.txt                # Python dependencies
-│   └── README.md                       # Setup instructions
-├── final_products_complete.csv         # Main product dataset (6k items)
-├── ViT_Img_Descriptor.py              # LLaVA vision model for clothing analysis
-├── supermemory_batch_push.py           # Bulk upload products to SuperMemory
-├── supermemory_helper.py               # Individual product upload
-├── supermemory_search.py               # Search functionality testing
+│   │       └── data_loader.py           # CSV data loading utilities
+│   └── requirements.txt                 # App-specific dependencies
 ├── utils/
-│   └── preprocess.py                   # Unify brand-specific CSV files
-└── data/                               # Brand-specific product datasets
-    ├── alo_yoga_products.csv
-    ├── gymshark_products.csv
-    └── ...                             # Additional brand files
+│   ├── preprocess.py                    # Unify brand-specific CSV files
+│   └── download_images.py               # Download images helper
+├── data/                                # Brand-specific product datasets
+│   ├── alo_yoga_products.csv
+│   ├── gymshark_products.csv
+│   └── ...
+├── archive_data/
+│   └── ...
+├── final_products_complete.csv          # Main product dataset (6k items)
+├── requirements.txt                     # Root deps for scripts/libs
+├── .gitignore
+└── README.md
+```
+
+## End-to-End Flow
+
+1) Download and preprocess images and data
+
+- Run your image download and preprocessing utilities to build input CSVs:
+  - `utils/download_images.py`
+  - `utils/preprocess.py`
+
+2) Generate clothing descriptions (Vision pipeline)
+
+- Use the ViT descriptor to generate `clothing_features` and produce the consolidated dataset.
+- Output: `final_products_complete.csv` at project root.
+
+```
+python pipelines/vision/ViT_Img_Descriptor.py
+```
+
+3) Ingest to SuperMemory (Batch)
+
+- Ensure `.env` has your API key (see Setup below)
+- Install root deps and run the batch ingestion script:
+
+```
+pip install -r requirements.txt
+python scripts/ingestion/supermemory_batch_push.py
+```
+
+4) Run the Streamlit App
+
+- Install app deps and launch:
+
+```
+cd streamlit-product-display
+pip install -r requirements.txt
+cd src
+streamlit run app.py
 ```
 
 ## Quick Setup
@@ -55,11 +107,38 @@ devhacks/
    pip install -r requirements.txt
    ```
 
-2. **Run the app**
+2. **Configure API key**
+
+- Streamlit app (preferred): create `streamlit-product-display/.streamlit/secrets.toml` with:
+
+```
+SUPERMEMORY_API_KEY = "your_supermemory_api_key_here"
+```
+
+- CLI/ingestion scripts: set an environment variable or use a project `.env` file at `Slapp/.env` with:
+
+```
+SUPERMEMORY_API_KEY=your_supermemory_api_key_here
+```
+
+Notes:
+- The shared client now reads the key from the environment only.
+- The Streamlit app automatically exports `SUPERMEMORY_API_KEY` from `st.secrets` into the environment on startup.
+- Scripts optionally load `Slapp/.env` if present; otherwise they use your shell env.
+
+3. **Run the app (from project app root)**
    ```bash
-   cd src
-   streamlit run app.py
+   cd streamlit-product-display
+   streamlit run src/app.py
    ```
+
+4. **Run ingestion scripts**
+
+Ensure `SUPERMEMORY_API_KEY` is available in your environment (via `Slapp/.env` or shell export), then run scripts from anywhere, e.g.:
+
+```bash
+python scripts/ingestion/supermemory_batch_push.py
+```
 
 3. **Start discovering fashion**
    - Open browser to `http://localhost:8501`
@@ -73,6 +152,12 @@ devhacks/
 3. **AI Analysis**: SuperMemory analyzes collective preferences to understand user style
 4. **Smart Recommendations**: AI queries the product database to find matching items
 5. **Continuous Improvement**: More swipes = better recommendations
+
+## Notes
+
+- API keys are read from Streamlit `st.secrets`. Configure via `.streamlit/secrets.toml`. The shared client is in `src/supermemory/client.py`.
+- CLI scripts under `scripts/ingestion/` locate CSVs relative to the project root, so you can run them from any directory.
+- When running Streamlit, `app.py` prepends the project `src/` to `sys.path` so shared code is importable.
 
 ## Key Features
 

@@ -1,5 +1,18 @@
 import streamlit as st
+import os
+import sys
+import streamlit as st
+
+# Ensure project root (which contains `src/`) is importable
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+# Environment configuration is read from Streamlit secrets; no dotenv loading
 import pandas as pd
+import requests
+from io import BytesIO
+from PIL import Image
 import uuid
 import time
 from user_memory import save_liked_product, save_super_liked_product, save_disliked_product
@@ -10,6 +23,15 @@ from utils.data_loader import get_random_products
 # Page config
 # add lightning bolt icon
 st.set_page_config(page_title="Slapp-AI ⚡", layout="centered")
+
+# Ensure the API key from Streamlit secrets is available to shared client via env
+try:
+    api_key = st.secrets.get("SUPERMEMORY_API_KEY")
+    if api_key and not os.getenv("SUPERMEMORY_API_KEY"):
+        os.environ["SUPERMEMORY_API_KEY"] = str(api_key)
+except Exception:
+    pass
+
 
 def initialize_session_state():
     """Initialize session state variables"""
@@ -54,7 +76,8 @@ def initialize_session_state():
     
     # Load CSV data once
     if 'products_df' not in st.session_state:
-        st.session_state.products_df = pd.read_csv('/Users/raj/Desktop/devhacks/final_products_complete.csv').dropna()
+        csv_path = os.path.join(PROJECT_ROOT, 'final_products_complete.csv')
+        st.session_state.products_df = pd.read_csv(csv_path).dropna()
         # Shuffle the dataframe to show random products each session
         st.session_state.products_df = st.session_state.products_df.sample(frac=1).reset_index(drop=True)
         print(f"📊 Loaded and shuffled {len(st.session_state.products_df)} products from CSV")
@@ -297,23 +320,59 @@ if current_product:
     col1, col2, col3 = st.columns([1, 3, 1])
     
     with col2:
-        # Product image - handle both CSV and AI recommendation formats
-        image_url = None
-        if st.session_state.ai_mode:
-            # AI recommendations use 'image' field
-            image_url = current_product.get('image', '')
-        else:
-            # CSV products use 'image_url' field
-            image_url = current_product.get('image_url', '')
+        # Product image - unify to 'image' with fallback to 'image_url'
+        image_url = current_product.get('image', '') or current_product.get('image_url', '')
         
         if image_url:
+            # Always fetch bytes with headers to avoid hotlinking issues; fallback to direct URL only if needed
             try:
-                # Center the image using columns
-                img_col1, img_col2, img_col3 = st.columns([1, 2, 1])
-                with img_col2:
-                    st.image(image_url, width=120, use_container_width=False)
-            except:
-                st.markdown("<p style='text-align: center;'>📷 Image not available</p>", unsafe_allow_html=True)
+                referer = None
+                # Prefer product_url if present, otherwise derive referer from image_url domain
+                product_url = current_product.get('product_url', '') or current_product.get('url', '')
+                if product_url:
+                    referer = product_url
+                else:
+                    try:
+                        from urllib.parse import urlparse
+                        parsed = urlparse(image_url)
+                        referer = f"{parsed.scheme}://{parsed.netloc}/"
+                    except Exception:
+                        referer = None
+
+                headers = {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+                }
+                if referer:
+                    headers["Referer"] = referer
+
+                resp = requests.get(image_url, headers=headers, timeout=10)
+                if resp.ok and resp.content and resp.headers.get('Content-Type','').startswith('image'):
+                    try:
+                        image_obj = Image.open(BytesIO(resp.content))
+                        img_col1, img_col2, img_col3 = st.columns([1, 2, 1])
+                        with img_col2:
+                            st.image(image_obj, width=120)
+                    except Exception as e:
+                        # Fallback to direct bytes
+                        img_col1, img_col2, img_col3 = st.columns([1, 2, 1])
+                        with img_col2:
+                            st.image(resp.content, width=120)
+                else:
+                    # Fallback to direct URL rendering
+                    try:
+                        img_col1, img_col2, img_col3 = st.columns([1, 2, 1])
+                        with img_col2:
+                            st.image(image_url, width=120)
+                    except Exception:
+                        st.markdown("<p style='text-align: center;'>📷 Image not available</p>", unsafe_allow_html=True)
+            except Exception as _e:
+                # Absolute fallback
+                try:
+                    img_col1, img_col2, img_col3 = st.columns([1, 2, 1])
+                    with img_col2:
+                        st.image(image_url, width=120)
+                except Exception:
+                    st.markdown("<p style='text-align: center;'>📷 Image not available</p>", unsafe_allow_html=True)
         else:
             st.markdown("<p style='text-align: center;'>📷 No image</p>", unsafe_allow_html=True)
         
@@ -353,28 +412,3 @@ else:
         st.write("Keep swiping - we'll get more recommendations every 10 swipes!")
     else:
         st.warning("📦 No more products to show from the catalog!")
-
-# Debug info (can be removed)
-with st.expander("Debug Info"):
-    st.write(f"**Session ID:** {st.session_state.session_id}")
-    st.write(f"**Total Swipes:** {st.session_state.total_swipes}")
-    st.write(f"**AI Mode:** {st.session_state.ai_mode}")
-    st.write(f"**Random Fallback Mode:** {st.session_state.random_fallback_mode}")
-    st.write(f"**CSV Index:** {st.session_state.current_index}")
-    st.write(f"**AI Index:** {st.session_state.ai_index}")
-    st.write(f"**Random Index:** {st.session_state.random_index}")
-    st.write(f"**AI Recommendations:** {len(st.session_state.ai_recommendations)}")
-    st.write(f"**Random Products:** {len(st.session_state.random_products)}")
-    st.write(f"**Background Building:** {st.session_state.background_building}")
-    st.write(f"**Recommendations Ready:** {st.session_state.recommendations_ready}")
-    
-    # AI Recommendations Details
-    if st.session_state.ai_recommendations:
-        st.write("**AI Recommendations Details:**")
-        for i, rec in enumerate(st.session_state.ai_recommendations[:10]):  # Show first 10
-            name = rec.get('name', 'Unknown')
-            score = rec.get('score', 0)
-            current_marker = " ← CURRENT" if i == st.session_state.ai_index else ""
-            st.write(f"  {i+1}. {name} (Score: {score:.3f}){current_marker}")
-        if len(st.session_state.ai_recommendations) > 10:
-            st.write(f"  ... and {len(st.session_state.ai_recommendations) - 10} more")

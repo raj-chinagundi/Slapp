@@ -21,3 +21,11 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+
+# Environment files
+.env
+.env.local
+.env.*.local
+.streamlit/
+
+./streamlit-product-display/.streamlit/secrets.toml

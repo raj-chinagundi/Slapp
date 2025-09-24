@@ -28,7 +28,7 @@ def query_memories_with_collective(collective_memory: str, limit: int = 10) -> D
     }
     
     headers = {
-        "Authorization": "Bearer sm_a3cfySA3Di6JBTkfRGNUZi_gJOZEQukLPdvegiMHZfmkPdKJsuJSDxIWTUVgrBUfNlzdrUAVeMbhkTkYlwtzbny",
+        "Authorization": f"Bearer {__import__('src.supermemory.client', fromlist=['get_api_key']).get_api_key()}",
         "Content-Type": "application/json"
     }
     

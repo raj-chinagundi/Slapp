@@ -1,11 +1,14 @@
+import os
 import requests
 import streamlit as st
 from typing import Dict, Any, Optional
 import uuid
 
-# Supermemory API configuration
-API_URL = "https://api.supermemory.ai/v3/documents"
-API_KEY = "sm_a3cfySA3Di6JBTkfRGNUZi_gJOZEQukLPdvegiMHZfmkPdKJsuJSDxIWTUVgrBUfNlzdrUAVeMbhkTkYlwtzbny"
+# Configuration is sourced via Streamlit secrets; no dotenv loading here
+
+from src.supermemory.client import build_headers, SUPERMEMORY_API_URL
+
+API_URL = f"{SUPERMEMORY_API_URL}/documents"
 
 def get_session_id() -> str:
     """
@@ -29,10 +32,7 @@ def push_to_supermemory(product: Dict[str, Any], preference_type: str = "liked")
     Returns:
         bool: True if successful, False otherwise
     """
-    headers = {
-        "Authorization": f"Bearer {API_KEY}",
-        "Content-Type": "application/json"
-    }
+    headers = build_headers()
     
     # Create the payload with product metadata
     # Handle both 'image' and 'image_url' field names
